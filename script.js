@@ -244,7 +244,8 @@ function setupProjectReveal() {
   const hiddenProjects = projects.slice(3);
 
   if (hiddenProjects.length === 0) {
-    loadMoreButton.setAttribute('aria-label', 'View all three projects');
+    loadMoreButton.style.display = 'none';
+    return;
   }
 
   const closeProjectReveal = () => {
