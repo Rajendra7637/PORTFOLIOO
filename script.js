@@ -43,40 +43,66 @@ $(document).ready(function() {
     $("html, body").animate({ scrollTop: 0 }, 600);
   });
   
-    $(".header ul li a").click(function(e) {
-      e.preventDefault(); 
-  
-      var target = $(this).attr("href");
-  
-      if ($(target).hasClass("active-section")) {
-        return; 
-      }
-  
-      if (target === "#home") {
-        $("html, body").animate(
-          {
-            scrollTop: 0 
-          },
-          500
-        );
-      } else {
-        var offset = $(target).offset().top - 40; 
-  
-        $("html, body").animate(
-          {
-            scrollTop: offset
-          },
-          500
-        );
-      }
-  
-      $(".header ul li a").removeClass("active");
-      $(this).addClass("active");
+    $(".header ul li a").on("click", function(e) {
+      var href = $(this).attr("href");
+      if (!href) return;
 
       // Auto-close dropdown after selecting a section on phones.
       if (window.matchMedia('(max-width: 767px)').matches) {
         mobileMenu.removeClass("open");
       }
+
+      var pathname = window.location.pathname;
+      var currentPage = pathname.substring(pathname.lastIndexOf('/') + 1) || "index.html";
+      if (!currentPage.endsWith(".html")) {
+        currentPage = (currentPage === "" || currentPage === "/") ? "index.html" : currentPage + ".html";
+      }
+
+      // Case 1: Pure hash link (e.g. href="#home", href="#about", href="#projects", href="#certifications")
+      if (href.startsWith("#")) {
+        var $target = $(href);
+        if ($target.length) {
+          e.preventDefault();
+          var offset = href === "#home" ? 0 : $target.offset().top - 40;
+          $("html, body").animate({ scrollTop: offset }, 500);
+          $(".header ul li a").removeClass("active");
+          $(this).addClass("active");
+        } else {
+          // Section doesn't exist on current subpage; navigate to index.html with that hash
+          window.location.href = "index.html" + href;
+        }
+        return;
+      }
+
+      // Case 2: Link contains page target (e.g. "index.html#home", "projects.html", "certifications.html")
+      var parts = href.split("#");
+      var targetFile = parts[0].substring(parts[0].lastIndexOf('/') + 1) || "index.html";
+      var targetHash = parts[1] ? "#" + parts[1] : "";
+
+      var isCurrentIndex = (currentPage === "index.html" || currentPage === "");
+      var isCurrentProjects = currentPage.startsWith("project");
+      var isCurrentCerts = currentPage.startsWith("certification");
+
+      var isTargetIndex = (targetFile === "index.html" || targetFile === "");
+      var isTargetProjects = targetFile.startsWith("project");
+      var isTargetCerts = targetFile.startsWith("certification");
+
+      // Clicking link to the CURRENT page:
+      if ((isCurrentIndex && isTargetIndex) || (isCurrentProjects && isTargetProjects) || (isCurrentCerts && isTargetCerts)) {
+        e.preventDefault();
+        if (targetHash && $(targetHash).length) {
+          var offset = targetHash === "#home" ? 0 : $(targetHash).offset().top - 40;
+          $("html, body").animate({ scrollTop: offset }, 500);
+          $(".header ul li a").removeClass("active");
+          $(this).addClass("active");
+        } else {
+          $("html, body").animate({ scrollTop: 0 }, 500);
+        }
+        return;
+      }
+
+      // Case 3: Navigating to a DIFFERENT page (e.g. from projects.html to index.html#about or certifications.html)
+      // Allow natural browser navigation without preventDefault!
     });
 
     $(document).click(function(e) {
@@ -137,6 +163,18 @@ $(document).ready(function() {
     }
 
   //contact form to excel sheet
+
+  // Smooth scroll when landing on index.html with a hash from another page
+  if (window.location.hash) {
+    var $hashTarget = $(window.location.hash);
+    if ($hashTarget.length) {
+      setTimeout(function() {
+        var offset = window.location.hash === "#home" ? 0 : $hashTarget.offset().top - 40;
+        $("html, body").animate({ scrollTop: offset }, 600);
+      }, 200);
+    }
+  }
+
   const scriptURL = 'https://script.google.com/macros/s/AKfycbzUSaaX3XmlE5m9YLOHOBrRuCh2Ohv49N9bs4bew7xPd1qlgpvXtnudDs5Xhp3jF-Fx/exec';
   const form = document.forms['submitToGoogleSheet']
   const msg = document.getElementById("msg")
@@ -159,27 +197,34 @@ $(document).ready(function() {
   });
   
   function updateActiveSection() {
+    var pathname = window.location.pathname;
+    var currentPage = pathname.substring(pathname.lastIndexOf('/') + 1) || "index.html";
+    var isIndexPage = (currentPage === "" || currentPage === "/" || currentPage === "index.html");
+
+    // Only dynamically update section highlight on index.html
+    if (!isIndexPage || !$("section#about").length) {
+      return;
+    }
+
     var scrollPosition = $(window).scrollTop();
   
-    // Checking if scroll position is at the top of the page
     if (scrollPosition === 0) {
       $(".header ul li a").removeClass("active");
-      $(".header ul li a[href='#home']").addClass("active");
+      $(".header ul li a[href='#home'], .header ul li a[href='index.html#home']").addClass("active");
       return;
     }
   
-    // Iterate through each section and update the active class in the header
-    $("section").each(function() {
+    $("section[id]").each(function() {
       var target = $(this).attr("id");
       var offset = $(this).offset().top;
       var height = $(this).outerHeight();
   
       if (
-        scrollPosition >= offset - 40 &&
-        scrollPosition < offset + height - 40
+        scrollPosition >= offset - 60 &&
+        scrollPosition < offset + height - 60
       ) {
         $(".header ul li a").removeClass("active");
-        $(".header ul li a[href='#" + target + "']").addClass("active");
+        $(".header ul li a[href='#" + target + "'], .header ul li a[href='index.html#" + target + "']").addClass("active");
       }
     });
   }
